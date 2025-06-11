@@ -23,3 +23,7 @@ A dashboard for monitoring the status of CRL (Certificate Revocation List) inges
 ## Usage
 
 Run main.py then open output.html.
+
+## Example output
+
+https://finiterealities.net/crl_audit.html
