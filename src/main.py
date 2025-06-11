@@ -125,7 +125,8 @@ def load_cached_data() -> Dict[str, Dict[str, Any]]:
                             'kind': entry.get('Kind', 'N/A'),
                             'num_revocations': entry.get('NumRevocations', '0'),
                             'errors': entry.get('Errors', ''),
-                            'age': entry.get('Age', 'N/A')
+                            'age': entry.get('Age', 'N/A'),
+                            'sha256sum': entry.get('SHA256Sum', 'N/A')
                         }
             except Exception as e:
                 print(f"Error loading {date_suffix}: {e}")
@@ -239,6 +240,7 @@ def create_heatmap_html(issuer_statuses: Dict[str, Dict[str, Any]], file_dates: 
                     "revocations": curr_revocations,
                     "rev_change": rev_change,
                     "age": status.get("age", "N/A"),
+                    "sha256sum": status.get("sha256sum", "xxx"),
                     "row_idx": row_idx,
                     "col_idx": col_idx
                 }
@@ -282,6 +284,7 @@ def create_heatmap_html(issuer_statuses: Dict[str, Dict[str, Any]], file_dates: 
                     const issuer = window.rowIssuersByIdx[data.row_idx] || 'N/A';
                     const date = window.colDatesByIdx[data.col_idx] || 'N/A';
                     let html = `<div class="info-row"><strong>Date:</strong> ${date}</div>`;
+                    html += `<div class="info-row"><strong>Sha256:</strong> ${data.sha256sum}</div>`;
                     html += `<div class="info-row"><strong>Age:</strong> ${data.age}</div>`;
                     html += `<div class="info-row"><strong>Kind:</strong> ${data.kind}</div>`;
                     if (data.revocations) {
