@@ -1,42 +1,25 @@
-# Python Project
+⚠️ **Warning**: This project is largely AI generated.
 
-This is a basic Python project template.
+# CRLite CRL ingestion status dashboard
 
-## Project Structure
+A dashboard for monitoring the status of CRL (Certificate Revocation List) ingestion from various certificate authorities. The dashboard displays a heatmap visualization of CRL download statuses over time, helping identify patterns and issues in CRL ingestion.
 
-```
-.
-├── README.md
-├── requirements.txt
-├── src/
-│   └── main.py
-└── .gitignore
-```
+## Features
 
-## Setup
-
-1. Create a virtual environment (recommended):
-```bash
-python -m venv venv
-source venv/bin/activate  # On Linux/Mac
-# or
-.\venv\Scripts\activate  # On Windows
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+- Visual heatmap showing CRL ingestion status over time
+- Color-coded status indicators:
+  - Green: Valid CRL
+  - Yellow: Warning or old valid CRL (>2 weeks)
+  - Red: Error
+  - Gray: No data
+- Interactive hover details showing:
+  - CRL age
+  - Number of revocations
+  - Status kind
+  - Error messages (if any)
+- Automatic data fetching and caching
+- Daily updates of CRL status data
 
 ## Usage
 
-Run the main script:
-```bash
-python src/main.py
-```
-
-## Development
-
-- Source code is located in the `src` directory
-- Add new dependencies to `requirements.txt`
-- Use `pip freeze > requirements.txt` to update dependencies 
+Run main.py then open output.html.
