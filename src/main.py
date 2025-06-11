@@ -85,7 +85,20 @@ def check_for_updates() -> List[Tuple[str, str]]:
     return needs_update
 
 def update_files(needs_update: List[Tuple[str, str]]) -> None:
-    """Update the specified files."""
+    """Update the specified files and remove unexpected files from the cache."""
+    # Get all expected date_suffixes from get_file_urls()
+    expected_date_suffixes = {date_suffix for date_suffix, _ in get_file_urls()}
+    expected_files = {get_cache_path(date_suffix) for date_suffix in expected_date_suffixes}
+    cache_files = set(CACHE_DIR.glob("*"))
+    # Remove unexpected files
+    for file_path in cache_files - expected_files:
+        try:
+            file_path.unlink()
+            print(f"Removed unexpected file: {file_path}")
+        except Exception as e:
+            print(f"Error removing {file_path}: {e}")
+
+    # Update expected files
     for date_suffix, url in needs_update:
         print(f"Fetching {date_suffix}...")
         cache_path = get_cache_path(date_suffix)
