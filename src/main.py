@@ -10,7 +10,7 @@ import time
 
 CACHE_DIR = Path("cache")
 BASE_URL = "https://storage.googleapis.com/crlite-filters-prod"
-DAYS_TO_FETCH = 14
+DAYS_TO_FETCH = 14 
 FILES_PER_DAY = 2
 
 def get_file_dates() -> List[str]:
@@ -112,17 +112,17 @@ def load_cached_data() -> Dict[str, Dict[str, Any]]:
                 with open(cache_path, 'r') as f:
                     data = json.load(f)
                     for entry in data.get('Entries', []):
-                        if 'Path' not in entry:
+                        if 'Not Fresh' in entry.get('Kind', 'N/A'):
                             continue
                         key = entry.get('Url', 'N/A')
                         if key not in issuer_statuses:
                             issuer_statuses[key] = {
                                 'url': entry.get('Url', ''),
+                                'issuer': entry.get('IssuerSubject', 'N/A'),
                                 'statuses': {}
                             }
                         issuer_statuses[key]['statuses'][date_suffix] = {
                             'kind': entry.get('Kind', 'N/A'),
-                            'issuer': entry.get('IssuerSubject', 'N/A'),
                             'num_revocations': entry.get('NumRevocations', '0'),
                             'errors': entry.get('Errors', ''),
                             'age': entry.get('Age', 'N/A')
@@ -204,20 +204,19 @@ def create_heatmap_html(issuer_statuses: Dict[str, Dict[str, Any]], file_dates: 
     
     html += '</div>\n<div class="heatmap-grid">\n'
     
+    # Build JS tables for issuers and dates
+    row_issuers_js = 'window.rowIssuersByIdx = ' + json.dumps({i: issuer_statuses[issuer]['issuer'] for i, issuer in enumerate(sorted_issuers)}) + ';'
+    col_dates_js = 'window.colDatesByIdx = ' + json.dumps({i: date for i, date in enumerate(file_dates)}) + ';'
+    html += f'<script>{row_issuers_js}{col_dates_js}</script>'
+
     # Add rows for each issuer
-    for issuer in sorted_issuers:
+    for row_idx, issuer in enumerate(sorted_issuers):
         url = issuer_statuses[issuer]['url']
-        # Truncate URL at 40 characters
         display_url = url[:40] + ('...' if len(url) > 40 else '')
         statuses = issuer_statuses[issuer]['statuses']
-        
         html += f'<div class="url-column"><a href="{url}" target="_blank">{display_url}</a></div>\n'
-        
-        # Track previous revocation count for this issuer
         prev_revocations = None
-        
-        # Add cells for each date
-        for date_suffix in file_dates:
+        for col_idx, date_suffix in enumerate(file_dates):
             if date_suffix in statuses:
                 status = statuses[date_suffix]
                 kind = status['kind']
@@ -228,22 +227,20 @@ def create_heatmap_html(issuer_statuses: Dict[str, Dict[str, Any]], file_dates: 
                 display_text = ''
                 if prev_revocations is not None and isinstance(curr_revocations, int) and isinstance(prev_revocations, int):
                     rev_change = curr_revocations - prev_revocations
-                    # Add arrow for large revocation changes
                     if abs(rev_change) > 250:
                         if rev_change > 0:
                             display_text = '&#9650;'
                         elif rev_change < 0:
                             display_text = '&#9660;'
                 prev_revocations = curr_revocations
-                # Store cell data as data attributes
                 cell_data = {
                     "kind": kind,
                     "errors": status.get("errors", ""),
                     "revocations": curr_revocations,
                     "rev_change": rev_change,
-                    "date": date_suffix,
                     "age": status.get("age", "N/A"),
-                    "issuer": status.get("issuer", "N/A")
+                    "row_idx": row_idx,
+                    "col_idx": col_idx
                 }
                 cell_data_json = json.dumps(cell_data).replace("'", "&#39;")
                 html += f'''
@@ -252,8 +249,8 @@ def create_heatmap_html(issuer_statuses: Dict[str, Dict[str, Any]], file_dates: 
                      data-cell='{cell_data_json}'>{display_text}</div>
                 '''
             else:
-                html += '<div class="status-cell" style="background-color: #f0f0f0;" data-cell=\'{"date": "' + date_suffix + '"}\'></div>\n'
-                prev_revocations = None  # Reset prev_revocations when there's no data
+                html += '<div class="status-cell" style="background-color: #f0f0f0;" data-cell=\'{"row_idx": ' + str(row_idx) + ', "col_idx": ' + str(col_idx) + '}\'></div>\n'
+                prev_revocations = None
     
     html += """</div></div>
     <script>
@@ -282,7 +279,9 @@ def create_heatmap_html(issuer_statuses: Dict[str, Dict[str, Any]], file_dates: 
             cell.addEventListener('mouseenter', function() {
                 const data = JSON.parse(this.dataset.cell);
                 if (data.kind) {
-                    let html = `<div class="info-row"><strong>Date:</strong> ${data.date}</div>`;
+                    const issuer = window.rowIssuersByIdx[data.row_idx] || 'N/A';
+                    const date = window.colDatesByIdx[data.col_idx] || 'N/A';
+                    let html = `<div class="info-row"><strong>Date:</strong> ${date}</div>`;
                     html += `<div class="info-row"><strong>Age:</strong> ${data.age}</div>`;
                     html += `<div class="info-row"><strong>Kind:</strong> ${data.kind}</div>`;
                     if (data.revocations) {
@@ -299,10 +298,10 @@ def create_heatmap_html(issuer_statuses: Dict[str, Dict[str, Any]], file_dates: 
                         html += `<div class="info-row"><strong>Errors:</strong> ${data.errors}</div>`;
                     }
                     infoDetails.innerHTML = html;
-                    infoTitle.textContent = data.issuer;
+                    infoTitle.textContent = issuer;
                     infoPanel.style.display = 'block';
                 } else {
-                    infoDetails.innerHTML = `<div class="info-row">No data available for ${data.date}</div>`;
+                    infoDetails.innerHTML = `<div class="info-row">No data available for ${data.row_idx}, ${data.col_idx}</div>`;
                     infoTitle.textContent = 'No Data';
                     infoPanel.style.display = 'block';
                 }
