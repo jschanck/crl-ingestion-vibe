@@ -196,9 +196,52 @@ def get_status_color(kind: str, age: str) -> str:
 
 def create_heatmap_html(issuer_statuses: Dict[str, Dict[str, Any]], file_dates: List[str]) -> str:
     """Create a heatmap visualization using CSS Grid."""
-    # Sort issuers by URL
-    sorted_issuers = sorted(issuer_statuses.keys(), 
-                          key=lambda x: issuer_statuses[x]['url'].lower())
+    # Sort issuers by priority of issues, then by URL
+    def sort_key(issuer):
+        data = issuer_statuses[issuer]
+        # Priority levels: 0=no issues, 1=arrows, 2=missing data, 3=warnings, 4=errors
+        priority = 0
+        has_error = False
+        has_warning = False
+        has_arrow = False
+        prev_revocations = None
+        
+        # Check for missing data
+        if len(data['statuses']) < len(file_dates):
+            priority = 2
+        
+        # Check for warnings, errors, and arrows
+        for status in data['statuses'].values():
+            kind = status.get('kind', '')
+            age = status.get('age', '')
+            bg_color = get_status_color(kind, age)
+            if bg_color == '#FFB6C1':  # Red
+                has_error = True
+            elif bg_color == '#FFEB3B':  # Yellow
+                has_warning = True
+            
+            # Check for significant revocation count changes
+            curr_revocations = status.get('num_revocations', 0)
+            if prev_revocations is not None and isinstance(curr_revocations, int) and isinstance(prev_revocations, int):
+                if abs(curr_revocations - prev_revocations) > 250:
+                    has_arrow = True
+            prev_revocations = curr_revocations
+        
+        # Set priority based on most severe issue
+        if has_error:
+            priority = 4
+        elif has_warning:
+            priority = 3
+        elif has_arrow:
+            priority = 1
+        
+        # Sort by priority (descending) then by URL
+        return (-priority, data['url'].lower())
+    
+    sorted_issuers = sorted(issuer_statuses.keys(), key=sort_key)
+    
+    if not sorted_issuers:
+        return "<div>No warnings or errors found in any URLs.</div>"
     
     # Create the grid container with CSS Grid
     html = """
@@ -354,7 +397,7 @@ def main() -> None:
     html_output = """
     <html>
     <head>
-        <title>CRLite CRL Downloader Statuses</title>
+        <title>CRLite CRL Ingestion Vibes</title>
         <style>
             body {
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -454,7 +497,7 @@ def main() -> None:
         </style>
     </head>
     <body>
-    <h1>CRLite CRL Downloader Statuses</h1>
+    <h1>CRLite CRL Ingestion Vibes</h1>
     """
 
     # Add the heatmap
