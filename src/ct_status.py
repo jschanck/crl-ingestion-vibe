@@ -18,7 +18,7 @@ def get_latest_ct_logs_url():
     
     for _ in range(max_attempts):
         # Try version 1 first (more recent), then version 0
-        for version in [1, 0]:
+        for version in [3, 2, 1, 0]:
             date_str = current_date.strftime("%Y%m%d")
             url = f"{base_url}/{date_str}-{version}/ct-logs.json"
             
