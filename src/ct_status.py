@@ -136,7 +136,7 @@ def main():
             if result is None:
                 continue
             
-            entry_lag = int(result['tree_size']) - int(result['max_entry']) if result['tree_size'] != 'N/A' else 'N/A'
+            entry_lag = max(int(result['tree_size']) - 1, 0) - int(result['max_entry']) if result['tree_size'] != 'N/A' else 'N/A'
             results.append({
                 'url': result['short_url'],
                 'entry_lag': entry_lag,
